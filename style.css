@@ -1,42 +1,178 @@
-body {
-  font-family: sans-serif;
-  background: #f4f4f4;
-  text-align: center;
-  padding: 30px;
+// -----------------------------
+// CONTEXTES ET VARIABLES
+// -----------------------------
+const notes = [
+  { fr: 'Do', en: 'C' }, { fr: 'Do# / Réb', en: 'C#' },
+  { fr: 'Ré', en: 'D' }, { fr: 'Ré# / Mib', en: 'D#' },
+  { fr: 'Mi', en: 'E' }, { fr: 'Fa', en: 'F' },
+  { fr: 'Fa# / Solb', en: 'F#' }, { fr: 'Sol', en: 'G' },
+  { fr: 'Sol# / Lab', en: 'G#' }, { fr: 'La', en: 'A' },
+  { fr: 'La# / Sib', en: 'A#' }, { fr: 'Si', en: 'B' }
+];
+const rhythms = {
+  rock: [60, null, 80, null, 80, null, 60, null],
+  jazz: [null, 100, null, 120, 80, null, null, 120],
+  blues: [80, null, 100, null, 60, null, 60, 80],
+  funk: [100, 140, null, 140, 100, null, 140, null],
+  custom: [60, null, 120, null]
+};
+let currentOctave = 4;
+let isRhythmOn = false;
+let isMetronomeOn = false;
+let isLooping = false;
+let loopNotes = [];
+let loopStartTime = null;
+let rhythmInterval, metronomeInterval;
+let sustain = false;
+let currentPreset = 'default';
+let synthType = 'sine';
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// -----------------------------
+// INTERFACE
+// -----------------------------
+function startMode(mode) {
+  document.getElementById("mainMenu").style.display = "none";
+  document.getElementById("interface").style.display = "block";
+  createKeyboard(mode === "advanced");
 }
 
-.container {
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  display: inline-block;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+function createKeyboard(isAdvanced) {
+  const keyboard = document.getElementById('keyboard');
+  keyboard.innerHTML = '';
+  notes.forEach(n => {
+    if (!isAdvanced && n.en.includes('#')) return;
+    const key = document.createElement('div');
+    key.className = 'key';
+    if (n.en.includes('#')) key.classList.add('sharp');
+    key.innerHTML = `<strong>${n.en}</strong><br><small>${n.fr}</small>`;
+    key.addEventListener('click', () => playNote(n.en, currentOctave));
+    keyboard.appendChild(key);
+  });
 }
 
-.keyboard {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin: 20px 0;
+document.getElementById('octaveUp').onclick = () => {
+  if (currentOctave < 7) currentOctave++;
+  document.getElementById('octaveValue').textContent = currentOctave;
+};
+
+document.getElementById('octaveDown').onclick = () => {
+  if (currentOctave > 1) currentOctave--;
+  document.getElementById('octaveValue').textContent = currentOctave;
+};
+
+document.getElementById('synthSelect').onchange = (e) => synthType = e.target.value;
+document.getElementById('vintageSynth').onchange = (e) => currentPreset = e.target.value;
+document.getElementById('sustainToggle').onchange = (e) => sustain = e.target.checked;
+
+// -----------------------------
+// MÉTRONOME
+// -----------------------------
+document.getElementById('metronomeToggle').onchange = (e) => {
+  isMetronomeOn = e.target.checked;
+  if (isMetronomeOn) startMetronome();
+  else clearInterval(metronomeInterval);
+};
+
+function startMetronome() {
+  const bpm = parseInt(document.getElementById('tempo').value);
+  const interval = 60000 / bpm;
+  metronomeInterval = setInterval(() => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.value = 1000;
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.05);
+  }, interval);
 }
 
-.key {
-  padding: 15px;
-  margin: 4px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #e0e0ff;
-  cursor: pointer;
-  width: 60px;
+// -----------------------------
+// RYTHMES
+// -----------------------------
+document.getElementById('toggleRhythm').onclick = () => {
+  if (!isRhythmOn) {
+    playRhythmPattern();
+    isRhythmOn = true;
+    document.getElementById('toggleRhythm').textContent = "Arrêter Rythme";
+  } else {
+    clearInterval(rhythmInterval);
+    isRhythmOn = false;
+    document.getElementById('toggleRhythm').textContent = "Démarrer Rythme";
+  }
+};
+
+function playRhythmPattern() {
+  const bpm = parseInt(document.getElementById('tempo').value);
+  const interval = 60000 / bpm;
+  const pattern = rhythms[document.getElementById('rhythmSelect').value];
+  let step = 0;
+  rhythmInterval = setInterval(() => {
+    const freq = pattern[step % pattern.length];
+    if (freq) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    }
+    step++;
+  }, interval);
 }
 
-.key.sharp {
-  background: #444;
-  color: white;
+// -----------------------------
+// BOUCLEUR
+// -----------------------------
+document.getElementById('startLoop').onclick = () => {
+  loopNotes = [];
+  loopStartTime = audioCtx.currentTime;
+  isLooping = true;
+};
+
+document.getElementById('stopLoop').onclick = () => {
+  isLooping = false;
+  if (loopNotes.length > 0) {
+    loopNotes.forEach(n => scheduleLoopNote(n));
+  }
+};
+
+document.getElementById('clearLoop').onclick = () => {
+  loopNotes = [];
+  loopStartTime = null;
+  isLooping = false;
+};
+
+function scheduleLoopNote(n) {
+  const delay = n.time;
+  setTimeout(() => {
+    playNote(n.note, n.octave);
+    scheduleLoopNote(n); // reboucle
+  }, delay * 1000);
 }
 
-button, select, input[type="range"] {
-  margin: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
-}
+// -----------------------------
+// SON + PRESETS
+// -----------------------------
+function playNote(note, octave) {
+  const freq = getFrequency(note, octave);
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+
+  // Enveloppe par défaut
+  const env = {
+    attack: 0.01,
+    decay: 0.1,
+    sustain: sustain ? 0.8 : 0.3,
+    release: sustain ? 2.0 : 0.3
+  };
+
+  // Presets
+  const presets = {
+    ms20: { type: 'sawtooth', filter: { type: 'lowpass', freq: 800, Q: 10 }
