@@ -1,1 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Émulateur de Son</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Émulateur de Son Vintage</h1>
 
+    <div>
+      <button id="octaveDown">Octave -</button>
+      <span>Octave : <span id="octaveValue">4</span></span>
+      <button id="octaveUp">Octave +</button>
+    </div>
+
+    <div class="keyboard" id="keyboard"></div>
+
+    <h2>Synthétiseur</h2>
+    <select id="synthSelect">
+      <option value="sine">Sinus</option>
+      <option value="square">Carré</option>
+      <option value="triangle">Triangle</option>
+      <option value="sawtooth">Dent de scie</option>
+    </select>
+
+    <h2>Synthétiseurs Vintage</h2>
+    <select id="vintageSynth">
+      <option value="default">-- Sélectionner --</option>
+      <option value="ms20">KORG MS-20</option>
+      <option value="sh101">Roland SH-101</option>
+      <option value="mellotron">Mellotron M400</option>
+      <option value="prophet">Prophet 6</option>
+      <option value="moog">Moog Minimoog</option>
+    </select>
+
+    <h2>Effets</h2>
+    <label><input type="checkbox" id="reverbToggle"> Reverb</label>
+    <label><input type="checkbox" id="delayToggle"> Echo</label>
+
+    <h2>Boîte à Rythme</h2>
+    <select id="rhythmSelect">
+      <option value="808">TR-808</option>
+      <option value="909">TR-909</option>
+      <option value="linn">LinnDrum</option>
+      <option value="custom">Custom</option>
+    </select>
+
+    <label for="tempo">Tempo: <span id="tempoValue">120</span> BPM</label>
+    <input type="range" id="tempo" min="60" max="180" value="120">
+
+    <button id="toggleRhythm">Démarrer Rythme</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
